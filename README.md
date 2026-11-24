@@ -207,6 +207,10 @@ Or set `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env` to that person's email and run
 |---|---|---|---|
 | POST | `/api/auth/register` | anyone | create user account |
 | POST | `/api/auth/login` | anyone | log in → token |
+| POST | `/api/auth/verify` | anyone | email + 6-digit code → token |
+| POST | `/api/auth/resend` | anyone | send the code again (once a minute) |
+| POST | `/api/auth/forgot` | anyone | email a password-reset code |
+| POST | `/api/auth/reset` | anyone | email + code + new password → token |
 | GET | `/api/auth/me` | logged in | current user |
 | GET | `/api/reports` | anyone | map list (`?category=`, `?mine=1`) |
 | GET | `/api/reports/nearby?lat&lng&category` | anyone | duplicate suggestions |

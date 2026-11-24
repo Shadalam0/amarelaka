@@ -142,6 +142,7 @@
       <div class="field"><label for="l-pass">পাসওয়ার্ড</label><input type="password" id="l-pass" autocomplete="current-password" required></div>
       <div class="err" id="l-err"></div>
       <button class="btn y" type="submit">লগইন</button>
+      <p class="hint"><a href="#forgot">পাসওয়ার্ড ভুলে গেছেন?</a></p>
       <p class="hint">অ্যাকাউন্ট নেই? <a href="#register">নতুন অ্যাকাউন্ট খুলুন</a></p>
     </form>
   </section>
@@ -157,6 +158,35 @@
       <div class="err" id="r-err"></div>
       <button class="btn y" type="submit">অ্যাকাউন্ট খুলুন</button>
       <p class="hint">আগেই অ্যাকাউন্ট আছে? <a href="#login">লগইন করুন</a></p>
+    </form>
+  </section>
+
+  <!-- FORGOT PASSWORD -->
+  <section class="view" id="v-forgot" aria-label="পাসওয়ার্ড ভুলে গেছেন">
+    <form class="form narrow box" id="forgotForm" novalidate>
+      <h2>পাসওয়ার্ড ভুলে গেছেন?</h2>
+      <p class="hint">অ্যাকাউন্টের ইমেইল দিন। নতুন পাসওয়ার্ড সেট করার জন্য ৬ অঙ্কের একটি কোড পাঠানো হবে।</p>
+      <div class="field"><label for="f-email">ইমেইল</label><input type="email" id="f-email" autocomplete="email" required></div>
+      <div class="err" id="f-err"></div>
+      <button class="btn y" type="submit">কোড পাঠান</button>
+      <p class="hint"><a href="#login">লগইনে ফিরে যান</a></p>
+    </form>
+    <form class="form narrow box" id="resetForm" novalidate hidden>
+      <h2>নতুন পাসওয়ার্ড সেট করুন</h2>
+      <p class="hint" id="rs-msg"></p>
+      <div class="field"><label for="rs-code">৬ অঙ্কের কোড</label>
+        <input type="text" id="rs-code" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"></div>
+      <div class="field"><label for="rs-pass">নতুন পাসওয়ার্ড <span class="hint">(কমপক্ষে ৬ অক্ষর)</span></label>
+        <input type="password" id="rs-pass" autocomplete="new-password" minlength="6"></div>
+      <div class="field"><label for="rs-pass2">আবার নতুন পাসওয়ার্ড</label>
+        <input type="password" id="rs-pass2" autocomplete="new-password" minlength="6"></div>
+      <div class="err" id="rs-err"></div>
+      <button class="btn y" type="submit">পাসওয়ার্ড বদলান</button>
+      <div class="row between">
+        <button type="button" class="btn g" id="rsResend">আবার কোড পাঠান</button>
+        <a href="#login">লগইনে ফিরে যান</a>
+      </div>
+      <p class="hint">কোড না পেলে ইমেইলের <b>Spam / Junk</b> ফোল্ডারটি দেখুন।</p>
     </form>
   </section>
 

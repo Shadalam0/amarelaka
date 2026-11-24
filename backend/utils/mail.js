@@ -26,7 +26,7 @@ async function sendMail({ to, subject, text, html }) {
 }
 
 function codeEmail(name, code, purpose) {
-  const why = purpose === 'login' ? 'লগইন করতে' : 'আপনার ইমেইল যাচাই করতে';
+  const why = purpose === 'login' ? 'লগইন করতে' : purpose === 'reset' ? 'নতুন পাসওয়ার্ড সেট করতে' : 'আপনার ইমেইল যাচাই করতে';
   const text = `প্রিয় ${name},\n\n${why} এই কোডটি ব্যবহার করুন: ${code}\n\nকোডটি ১০ মিনিট পর্যন্ত কাজ করবে। আপনি এই অনুরোধ না করে থাকলে ইমেইলটি উপেক্ষা করুন।\n\n— আমার এলাকা (AmarElaka)`;
   const html = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#14213d">
   <h2 style="margin:0 0 8px;color:#163a6b">আমার এলাকা</h2>

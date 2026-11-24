@@ -132,8 +132,8 @@
     if (e.target.value.length === 6) $('#verifyForm').requestSubmit();
   });
   let resendTimer = null;
-  function startResendTimer(sec = 60) {
-    const b = $('#resendBtn'); clearInterval(resendTimer);
+  function startResendTimer(sec = 60, sel = '#resendBtn') {
+    const b = $(sel); clearInterval(resendTimer);
     let left = sec; b.disabled = true;
     const tick = () => {
       if (left <= 0) { clearInterval(resendTimer); b.disabled = false; b.textContent = 'আবার কোড পাঠান'; return; }
@@ -141,6 +141,45 @@
     };
     tick(); resendTimer = setInterval(tick, 1000);
   }
+  // ----- forgot password -----
+  let resetEmail = null;
+  async function sendResetCode() {
+    const d = await api('/api/auth/forgot', { method: 'POST', body: { email: resetEmail } });
+    $('#rs-msg').textContent = d.message + ' (' + resetEmail + ')';
+    startResendTimer(60, '#rsResend');
+  }
+  $('#forgotForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); $('#f-err').textContent = '';
+    resetEmail = $('#f-email').value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) { $('#f-err').textContent = 'সঠিক ইমেইল দিন।'; return; }
+    const btn = e.submitter || $('#forgotForm button[type=submit]'); btn.disabled = true;
+    try {
+      await sendResetCode();
+      $('#forgotForm').hidden = true; $('#resetForm').hidden = false;
+      $('#rs-err').textContent = ''; setTimeout(() => $('#rs-code').focus(), 100);
+    } catch (err) { $('#f-err').textContent = err.message; }
+    btn.disabled = false;
+  });
+  $('#rs-code').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+  $('#resetForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); $('#rs-err').textContent = '';
+    const code = $('#rs-code').value, p1 = $('#rs-pass').value, p2 = $('#rs-pass2').value;
+    if (code.length !== 6) { $('#rs-err').textContent = '৬ অঙ্কের কোডটি লিখুন।'; return; }
+    if (p1.length < 6) { $('#rs-err').textContent = 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'; return; }
+    if (p1 !== p2) { $('#rs-err').textContent = 'দুটি পাসওয়ার্ড মিলছে না।'; return; }
+    try {
+      const d = await api('/api/auth/reset', { method: 'POST', body: { email: resetEmail, code, password: p1 } });
+      $('#resetForm').reset(); $('#forgotForm').reset();
+      $('#resetForm').hidden = true; $('#forgotForm').hidden = false;
+      toast('পাসওয়ার্ড বদলানো হয়েছে।');
+      signedIn(d);
+    } catch (err) { $('#rs-err').textContent = err.message; }
+  });
+  $('#rsResend').addEventListener('click', async () => {
+    $('#rs-err').textContent = '';
+    try { await sendResetCode(); toast('নতুন কোড পাঠানো হয়েছে।'); } catch (err) { $('#rs-err').textContent = err.message; }
+  });
+
   $('#resendBtn').addEventListener('click', async () => {
     $('#v-err').textContent = '';
     try { const d = await api('/api/auth/resend', { method: 'POST', body: { email: pendingEmail } }); toast(d.message); startResendTimer(); }
@@ -522,7 +561,7 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#ov').classList.contains('on')) closeModal(); });
 
   // ---------- routing ----------
-  const VIEWS = ['map', 'new', 'track', 'login', 'register', 'verify', 'admin'];
+  const VIEWS = ['map', 'new', 'track', 'login', 'register', 'forgot', 'verify', 'admin'];
   function route() {
     let v = location.hash.slice(1);
     if (!VIEWS.includes(v)) v = 'map';

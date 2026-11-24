@@ -101,31 +101,69 @@ router.post('/login', limiter, async (req, res, next) => {
   }
 });
 
+// Checks a code against the user's saved hash. Returns an error message, or null when it is right.
+async function checkCode(user, rawCode) {
+  const code = String(rawCode || '').replace(/\D/g, '');
+  if (!user || !user.otpHash) return 'কোডটি সঠিক নয়। নতুন কোড পাঠান।';
+  if (user.otpExpires < new Date()) return 'কোডের মেয়াদ শেষ। নতুন কোড পাঠান।';
+  if (user.otpAttempts >= MAX_ATTEMPTS) return 'অনেকবার ভুল কোড দেওয়া হয়েছে। নতুন কোড পাঠান।';
+  const ok =
+    code.length === 6 &&
+    crypto.timingSafeEqual(Buffer.from(hashCode(code)), Buffer.from(user.otpHash));
+  if (!ok) {
+    user.otpAttempts += 1;
+    await user.save();
+    return `কোডটি সঠিক নয়। আর ${MAX_ATTEMPTS - user.otpAttempts} বার চেষ্টা করা যাবে।`;
+  }
+  user.otpHash = undefined;
+  user.otpExpires = undefined;
+  user.otpAttempts = 0;
+  return null;
+}
+
 // POST /api/auth/verify  { email, code }  -> token
 router.post('/verify', limiter, async (req, res, next) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
-    const code = String(req.body.code || '').replace(/\D/g, '');
     const user = await User.findOne({ email }).select('+otpHash +otpExpires +otpAttempts');
-    const fail = (msg) => res.status(400).json({ message: msg });
-
-    if (!user || !user.otpHash) return fail('কোডটি সঠিক নয়। নতুন কোড পাঠান।');
-    if (user.otpExpires < new Date()) return fail('কোডের মেয়াদ শেষ। নতুন কোড পাঠান।');
-    if (user.otpAttempts >= MAX_ATTEMPTS) return fail('অনেকবার ভুল কোড দেওয়া হয়েছে। নতুন কোড পাঠান।');
-
-    const ok =
-      code.length === 6 &&
-      crypto.timingSafeEqual(Buffer.from(hashCode(code)), Buffer.from(user.otpHash));
-    if (!ok) {
-      user.otpAttempts += 1;
-      await user.save();
-      return fail(`কোডটি সঠিক নয়। আর ${MAX_ATTEMPTS - user.otpAttempts} বার চেষ্টা করা যাবে।`);
-    }
-
+    const error = await checkCode(user, req.body.code);
+    if (error) return res.status(400).json({ message: error });
     user.emailVerified = true;
-    user.otpHash = undefined;
-    user.otpExpires = undefined;
-    user.otpAttempts = 0;
+    await user.save();
+    res.json({ token: signToken(user), user: user.toPublic() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/forgot  { email }  -> emails a reset code (same answer whether or not the account exists)
+router.post('/forgot', limiter, async (req, res, next) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ message: 'সঠিক ইমেইল দিন।' });
+    const generic = { ok: true, message: 'এই ইমেইলে অ্যাকাউন্ট থাকলে ৬ অঙ্কের একটি কোড পাঠানো হয়েছে।' };
+    const user = await User.findOne({ email }).select('+otpSentAt');
+    if (!user) return res.json(generic);
+    const wait = user.otpSentAt ? RESEND_SECONDS - (Date.now() - user.otpSentAt.getTime()) / 1000 : 0;
+    if (wait > 0) return res.status(429).json({ message: `${Math.ceil(wait)} সেকেন্ড পর আবার চেষ্টা করুন।` });
+    await issueCode(user, 'reset');
+    res.json(generic);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/reset  { email, code, password }  -> sets the new password and logs in
+router.post('/reset', limiter, async (req, res, next) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    if (password.length < 6) return res.status(400).json({ message: 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' });
+    const user = await User.findOne({ email }).select('+password +otpHash +otpExpires +otpAttempts');
+    const error = await checkCode(user, req.body.code);
+    if (error) return res.status(400).json({ message: error });
+    user.password = password;
+    user.emailVerified = true; // the code proved they own this email
     await user.save();
     res.json({ token: signToken(user), user: user.toPublic() });
   } catch (err) {
