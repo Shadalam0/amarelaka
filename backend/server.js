@@ -17,6 +17,7 @@ app.set('trust proxy', 1); // Render / most hosts sit behind a proxy
 // Security headers. The allow-list lets the page load Leaflet, Google Fonts and OpenStreetMap tiles.
 app.use(
   helmet({
+    // OpenStreetMap blocks map tiles requested without a Referer header
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     contentSecurityPolicy: {
       directives: {
@@ -59,7 +60,7 @@ app.use((err, req, res, next) => {
     const msg = err.code === 'LIMIT_FILE_SIZE' ? 'ছবি ৫ MB এর বেশি হতে পারবে না।' : 'ছবি আপলোডে সমস্যা হয়েছে।';
     return res.status(400).json({ message: msg });
   }
-  if (err.status && err.status < 500) return res.status(err.status).json({ message: err.message });
+  if ((err.status && err.status < 500) || err.expose) return res.status(err.status || 500).json({ message: err.message });
   if (err.name === 'ValidationError') return res.status(400).json({ message: 'তথ্য সঠিক নয়।' });
   console.error(err);
   res.status(500).json({ message: 'সার্ভারে সমস্যা হয়েছে, পরে আবার চেষ্টা করুন।' });

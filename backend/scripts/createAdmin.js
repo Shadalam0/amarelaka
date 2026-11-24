@@ -18,12 +18,13 @@ const User = require('../models/User');
   let user = await User.findOne({ email }).select('+password');
   if (user) {
     user.role = 'admin';
+    user.emailVerified = true;
     user.name = name;
     user.password = password;
     await user.save();
     console.log('Existing account upgraded to admin:', email);
   } else {
-    user = await User.create({ name, email, password, role: 'admin' });
+    user = await User.create({ name, email, password, role: 'admin', emailVerified: true });
     console.log('Admin account created:', email);
   }
   await mongoose.disconnect();

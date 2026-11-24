@@ -18,3 +18,11 @@ services:
         value: 7d
       - key: NEARBY_METERS
         value: "100"
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM_EMAIL
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: AmarElaka
+      - key: LOGIN_OTP
+        value: "false"

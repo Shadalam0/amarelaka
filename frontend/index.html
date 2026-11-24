@@ -160,6 +160,23 @@
     </form>
   </section>
 
+  <!-- VERIFY EMAIL CODE -->
+  <section class="view" id="v-verify" aria-label="কোড যাচাই">
+    <form class="form narrow box" id="verifyForm" novalidate>
+      <h2>ইমেইলের কোড দিন</h2>
+      <p class="hint" id="v-msg">আপনার ইমেইলে ৬ অঙ্কের একটি কোড পাঠানো হয়েছে।</p>
+      <div class="field"><label for="v-code">৬ অঙ্কের কোড</label>
+        <input type="text" id="v-code" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" placeholder="••••••"></div>
+      <div class="err" id="v-err"></div>
+      <button class="btn y" type="submit">যাচাই করুন</button>
+      <div class="row between">
+        <button type="button" class="btn g" id="resendBtn">আবার কোড পাঠান</button>
+        <a href="#login">অন্য ইমেইল দিয়ে লগইন</a>
+      </div>
+      <p class="hint">কোড না পেলে ইমেইলের <b>Spam / Junk</b> ফোল্ডারটি দেখুন।</p>
+    </form>
+  </section>
+
   <!-- ADMIN -->
   <section class="view" id="v-admin" aria-label="অ্যাডমিন ড্যাশবোর্ড">
     <div class="row between">

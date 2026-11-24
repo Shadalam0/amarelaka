@@ -74,25 +74,77 @@
     return false;
   }
 
+  // Sign-in finished: save the login and go on
+  function signedIn(d) {
+    Auth.save(d.token, d.user); renderAuth();
+    toast('স্বাগতম, ' + d.user.name + '!');
+    location.hash = '#' + (d.user.role === 'admin' && afterLogin === 'map' ? 'admin' : afterLogin);
+    loadReports();
+  }
+
+  // The server emailed a 6-digit code: show the code page
+  let pendingEmail = null;
+  function askCode(d) {
+    pendingEmail = d.email;
+    try { sessionStorage.setItem('ae_pending', d.email); } catch { /* ignore */ }
+    $('#v-msg').textContent = d.message || 'আপনার ইমেইলে ৬ অঙ্কের একটি কোড পাঠানো হয়েছে।';
+    $('#v-code').value = ''; $('#v-err').textContent = '';
+    startResendTimer();
+    location.hash = '#verify';
+    setTimeout(() => $('#v-code').focus(), 100);
+  }
+
   $('#loginForm').addEventListener('submit', async (e) => {
     e.preventDefault(); $('#l-err').textContent = '';
+    const btn = e.submitter || $('#loginForm button[type=submit]'); btn.disabled = true;
     try {
       const d = await api('/api/auth/login', { method: 'POST', body: { email: $('#l-email').value, password: $('#l-pass').value } });
-      Auth.save(d.token, d.user); renderAuth(); $('#loginForm').reset();
-      toast('স্বাগতম, ' + d.user.name + '!');
-      location.hash = '#' + (d.user.role === 'admin' && afterLogin === 'map' ? 'admin' : afterLogin);
-      loadReports();
+      $('#loginForm').reset();
+      if (d.needCode) askCode(d); else signedIn(d);
     } catch (err) { $('#l-err').textContent = err.message; }
+    btn.disabled = false;
   });
   $('#regForm').addEventListener('submit', async (e) => {
     e.preventDefault(); $('#r-err').textContent = '';
+    const btn = e.submitter || $('#regForm button[type=submit]'); btn.disabled = true;
     try {
       const d = await api('/api/auth/register', { method: 'POST', body: {
         name: $('#r-name').value, email: $('#r-email').value, phone: $('#r-phone').value, password: $('#r-pass').value,
       } });
-      Auth.save(d.token, d.user); renderAuth(); $('#regForm').reset();
-      toast('অ্যাকাউন্ট খোলা হয়েছে!'); location.hash = '#' + afterLogin; loadReports();
+      $('#regForm').reset();
+      if (d.needCode) askCode(d); else signedIn(d);
     } catch (err) { $('#r-err').textContent = err.message; }
+    btn.disabled = false;
+  });
+  $('#verifyForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); $('#v-err').textContent = '';
+    const code = $('#v-code').value.replace(/\D/g, '');
+    if (code.length !== 6) { $('#v-err').textContent = '৬ অঙ্কের কোডটি লিখুন।'; return; }
+    try {
+      const d = await api('/api/auth/verify', { method: 'POST', body: { email: pendingEmail, code } });
+      try { sessionStorage.removeItem('ae_pending'); } catch { /* ignore */ }
+      pendingEmail = null;
+      signedIn(d);
+    } catch (err) { $('#v-err').textContent = err.message; }
+  });
+  $('#v-code').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    if (e.target.value.length === 6) $('#verifyForm').requestSubmit();
+  });
+  let resendTimer = null;
+  function startResendTimer(sec = 60) {
+    const b = $('#resendBtn'); clearInterval(resendTimer);
+    let left = sec; b.disabled = true;
+    const tick = () => {
+      if (left <= 0) { clearInterval(resendTimer); b.disabled = false; b.textContent = 'আবার কোড পাঠান'; return; }
+      b.textContent = `আবার কোড পাঠান (${bn(left)})`; left -= 1;
+    };
+    tick(); resendTimer = setInterval(tick, 1000);
+  }
+  $('#resendBtn').addEventListener('click', async () => {
+    $('#v-err').textContent = '';
+    try { const d = await api('/api/auth/resend', { method: 'POST', body: { email: pendingEmail } }); toast(d.message); startResendTimer(); }
+    catch (err) { $('#v-err').textContent = err.message; }
   });
 
   // ---------- maps ----------
@@ -470,11 +522,15 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#ov').classList.contains('on')) closeModal(); });
 
   // ---------- routing ----------
-  const VIEWS = ['map', 'new', 'track', 'login', 'register', 'admin'];
+  const VIEWS = ['map', 'new', 'track', 'login', 'register', 'verify', 'admin'];
   function route() {
     let v = location.hash.slice(1);
     if (!VIEWS.includes(v)) v = 'map';
     if (v === 'new' && !requireLogin('new')) return;
+    if (v === 'verify' && !pendingEmail) {
+      try { pendingEmail = sessionStorage.getItem('ae_pending'); } catch { /* ignore */ }
+      if (!pendingEmail) { location.hash = '#login'; return; }
+    }
     if (v === 'admin' && !Auth.isAdmin) { location.hash = Auth.user ? '#map' : '#login'; return; }
     document.querySelectorAll('.view').forEach((s) => s.classList.toggle('on', s.id === 'v-' + v));
     document.querySelectorAll('nav a').forEach((a) => { if (a.dataset.v === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });

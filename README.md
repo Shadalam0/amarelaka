@@ -118,13 +118,13 @@ Open **http://localhost:5000** in your browser.
 1. On https://github.com create a new repository named `amarelaka` (Public or Private).
 2. In the project folder:
    ```bash
-echo "# amarelaka" >> README.md
-git init
-git add README.md
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/Shadalam0/amarelaka.git
-git push -u origin main
+   cd amarelaka
+   git init
+   git add .
+   git commit -m "AmarElaka first version"
+   git branch -M main
+   git remote add origin https://github.com/YOUR-USERNAME/amarelaka.git
+   git push -u origin main
    ```
    The `.gitignore` file keeps `.env` (your passwords) and `node_modules` off GitHub. **Never upload `.env`.**
 
@@ -163,6 +163,33 @@ The admin account you created in step 4 is already in the Atlas database, so it 
 - Render's disk is wiped on every restart — that's why **photos are saved inside MongoDB**, not on disk.
 - **MongoDB Atlas free** = **512 MB**. Photos are shrunk to about 100–400 KB in the browser before upload, so expect room for roughly **1,500–3,000 photos**. For more, move photos to Cloudinary (free 25 GB) later.
 - Atlas may pause a free database that is unused for a long time. Log in to Atlas occasionally.
+
+---
+
+## 7b. Email verification codes (free, with Brevo)
+
+New users get a 6-digit code by email after sign-up and must enter it before they can log in.
+Set `LOGIN_OTP=true` to also email a code on **every** login.
+
+Render's free plan **blocks SMTP ports** (25/465/587), so Gmail SMTP / Nodemailer does not work there.
+AmarElaka sends mail through **Brevo's HTTPS API** instead — free, 300 emails/day.
+
+1. Sign up at https://www.brevo.com (free, no card).
+2. **Senders, Domains & Dedicated IPs → Senders → Add a sender**: add your Gmail address and click the confirmation link Brevo emails you.
+3. **SMTP & API → API Keys → Generate a new API key** → copy it (starts with `xkeysib-`).
+4. On Render → **Environment**, add:
+   | Key | Value |
+   |---|---|
+   | `BREVO_API_KEY` | the key from step 3 |
+   | `MAIL_FROM_EMAIL` | the sender email from step 2 |
+   | `MAIL_FROM_NAME` | `AmarElaka` |
+   | `LOGIN_OTP` | `false` (or `true` for a code on every login) |
+5. Save → Render redeploys.
+
+Locally, leave `BREVO_API_KEY` empty: the code is printed in the terminal instead of emailed.
+
+Codes expire after 10 minutes, allow 5 wrong tries, can be re-sent once a minute, and are stored hashed.
+Mail sent from a Gmail address through Brevo may land in **Spam** at first; with your own domain verified in Brevo it lands in the inbox.
 
 ---
 
@@ -207,6 +234,6 @@ Statuses: `new` (জমা হয়েছে) → `verified` (যাচাই �
 | `querySrv ENOTFOUND` / timeout | Check internet; in Atlas → Network Access make sure `0.0.0.0/0` is added. |
 | Map is grey | No internet (map tiles come from OpenStreetMap), or zoomed far away — check `MAP_CENTER`. |
 | "আমার বর্তমান লোকেশন" doesn't work | Browsers only allow GPS on `https://` or `localhost`. Render gives you https automatically. |
+| Verification email never arrives | Check Spam; check `BREVO_API_KEY` and that `MAIL_FROM_EMAIL` is a confirmed Brevo sender; Render Logs show `Brevo email failed (…)` with the reason. |
 | Site very slow at first | Render free server waking up (about 1 minute). |
 | `EADDRINUSE` | Another program uses port 5000 — change `PORT` in `.env`. |
-"# amarelaka" 
