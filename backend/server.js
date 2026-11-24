@@ -17,6 +17,7 @@ app.set('trust proxy', 1); // Render / most hosts sit behind a proxy
 // Security headers. The allow-list lets the page load Leaflet, Google Fonts and OpenStreetMap tiles.
 app.use(
   helmet({
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
