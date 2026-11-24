@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AmarElaka — আমার এলাকা</title>
+  <meta name="description" content="এলাকার রাস্তার গর্ত, নষ্ট স্ট্রিটলাইট, ময়লা বা পানি জমার সমস্যা ছবি ও লোকেশনসহ রিপোর্ট করুন এবং সমাধানের অগ্রগতি দেখুন।">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath d='M17 2c7 0 12 5 12 11.5C29 22 17 32 17 32S5 22 5 13.5C5 7 10 2 17 2z' fill='%23f5b800'/%3E%3Cpath d='M11 15l6-5 6 5v6H11z' fill='%23163a6b'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<svg width="0" height="0" class="sprite" aria-hidden="true">
+  <symbol id="ic-pothole" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="15" rx="9" ry="4"/><path d="M12 4l-2 4 3 1-2 4"/></symbol>
+  <symbol id="ic-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="5"/><path d="M10 18h4M10 21h4M4 3l16 16"/></symbol>
+  <symbol id="ic-garbage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+  <symbol id="ic-water" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/></symbol>
+  <symbol id="ic-drain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M12 6v12M16 6v12"/></symbol>
+  <symbol id="ic-other" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="bar">
+    <a class="brand" href="#map">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 2c7 0 12 5 12 11.5C29 22 17 32 17 32S5 22 5 13.5C5 7 10 2 17 2z" fill="#f5b800"/><path d="M11 15l6-5 6 5v6H11z" fill="#163a6b"/></svg>
+      আমার এলাকা <small>AmarElaka</small>
+    </a>
+    <nav aria-label="প্রধান মেনু">
+      <a href="#map" data-v="map">ম্যাপ</a>
+      <a href="#track" data-v="track">ট্র্যাক করুন</a>
+      <a href="#admin" data-v="admin" id="navAdmin" hidden>অ্যাডমিন</a>
+      <a href="#login" data-v="login" id="navLogin">লগইন</a>
+      <span id="navUser" class="who" hidden></span>
+      <button type="button" id="logoutBtn" class="navbtn" hidden>লগআউট</button>
+      <a href="#new" data-v="new" class="cta">+ রিপোর্ট করুন</a>
+    </nav>
+  </div>
+  <div class="hero">
+    <div>
+      <h1>এলাকার সমস্যা জানান, সমাধান পর্যন্ত দেখুন</h1>
+      <p>রাস্তার গর্ত, নষ্ট স্ট্রিটলাইট, ময়লা বা পানি জমা — ছবি ও লোকেশনসহ রিপোর্ট করুন। প্রতিটি অভিযোগের অগ্রগতি সবাই দেখতে পায়।</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+</header>
+<div class="banner" id="banner" role="status"></div>
+
+<main>
+  <!-- MAP -->
+  <section class="view" id="v-map" aria-label="ম্যাপ">
+    <div class="grid">
+      <div>
+        <div class="row between">
+          <h2>এলাকার ম্যাপ</h2>
+          <label class="row check"><input type="checkbox" id="showDone" checked> সমাধান হওয়াগুলো দেখান</label>
+        </div>
+        <div class="filters" id="catFilter"></div>
+        <div id="homeMap" class="map"></div>
+        <div class="legend" id="legend"></div>
+        <p class="note">বৃত্ত যত বড়, তত বেশি মানুষ একই সমস্যা জানিয়েছেন। বৃত্তে ক্লিক করে বিস্তারিত দেখুন।</p>
+      </div>
+      <div>
+        <div class="row between mb">
+          <h2>সাম্প্রতিক রিপোর্ট</h2>
+          <select id="sortHome" class="auto" aria-label="সাজান">
+            <option value="new">নতুন আগে</option>
+            <option value="sev">গুরুত্ব অনুযায়ী</option>
+          </select>
+        </div>
+        <div class="list" id="homeList"><div class="empty">লোড হচ্ছে…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEW REPORT -->
+  <section class="view" id="v-new" aria-label="রিপোর্ট করুন">
+    <form class="form" id="rform" novalidate>
+      <div><h2>নতুন সমস্যা রিপোর্ট করুন</h2><p class="hint">৪টি ধাপ, এক মিনিটের কাজ। জমা দিলে একটি ট্র্যাকিং কোড পাবেন।</p></div>
+
+      <div class="field">
+        <span class="lab">১. সমস্যার ধরন</span>
+        <div class="cats" id="catPick"></div>
+        <div class="err" id="e-cat"></div>
+      </div>
+
+      <div class="field">
+        <label for="f-title">২. সংক্ষেপে সমস্যাটি লিখুন</label>
+        <input type="text" id="f-title" maxlength="100" placeholder="যেমন: স্কুলের সামনে বড় গর্ত">
+        <div class="err" id="e-title"></div>
+        <label for="f-desc" class="mt">বিস্তারিত <span class="hint">(ঐচ্ছিক)</span></label>
+        <textarea id="f-desc" rows="3" maxlength="1000" placeholder="কতদিন ধরে, কী অসুবিধা হচ্ছে…"></textarea>
+      </div>
+
+      <div class="field">
+        <span class="lab">৩. ছবি <span class="hint">— ছবি থাকলে দ্রুত যাচাই হয়</span></span>
+        <label class="drop" for="f-photo" id="dropBox"><span>ছবি তুলুন বা বেছে নিন</span></label>
+        <input type="file" id="f-photo" accept="image/*" capture="environment" hidden>
+        <button type="button" class="btn g mt" id="rmPhoto" hidden>ছবি সরান</button>
+      </div>
+
+      <div class="field">
+        <span class="lab">৪. লোকেশন — ম্যাপে সমস্যার জায়গায় ট্যাপ করুন</span>
+        <button type="button" class="btn g mb" id="gpsBtn">আমার বর্তমান লোকেশন ব্যবহার করুন</button>
+        <div id="pickMap" class="map small"></div>
+        <p class="note" id="locTxt">এখনো লোকেশন বেছে নেওয়া হয়নি।</p>
+        <div class="err" id="e-loc"></div>
+        <div class="two mt">
+          <div><label for="f-area">এলাকা / ওয়ার্ডের নাম</label><input type="text" id="f-area" maxlength="80" placeholder="যেমন: মতলব বাজার, ওয়ার্ড ৩"><div class="err" id="e-area"></div></div>
+          <div><label for="f-land">কাছের পরিচিত জায়গা <span class="hint">(ঐচ্ছিক)</span></label><input type="text" id="f-land" maxlength="100" placeholder="যেমন: জামে মসজিদের পাশে"></div>
+        </div>
+      </div>
+
+      <div id="dupBox"></div>
+      <div class="err" id="e-form"></div>
+      <div class="row"><button class="btn y" type="submit" id="submitBtn">রিপোর্ট জমা দিন</button></div>
+    </form>
+    <div class="form" id="doneBox" hidden></div>
+  </section>
+
+  <!-- TRACK -->
+  <section class="view" id="v-track" aria-label="ট্র্যাক">
+    <div class="form">
+      <div><h2>অভিযোগের অগ্রগতি দেখুন</h2><p class="hint">ট্র্যাকিং কোড দিয়ে যেকোনো রিপোর্ট খুঁজুন, অথবা নিচে আপনার নিজের রিপোর্টগুলো দেখুন।</p></div>
+      <form class="row" id="tform">
+        <input type="search" id="t-code" placeholder="যেমন: AE-7KQ2M" class="grow" aria-label="ট্র্যাকিং কোড">
+        <button class="btn" type="submit">খুঁজুন</button>
+      </form>
+      <div class="err" id="t-err"></div>
+      <h3>আমার রিপোর্ট ও সমর্থন</h3>
+      <div class="list tall" id="myList"></div>
+    </div>
+  </section>
+
+  <!-- LOGIN -->
+  <section class="view" id="v-login" aria-label="লগইন">
+    <form class="form narrow box" id="loginForm" novalidate>
+      <h2>লগইন করুন</h2>
+      <div class="field"><label for="l-email">ইমেইল</label><input type="email" id="l-email" autocomplete="email" required></div>
+      <div class="field"><label for="l-pass">পাসওয়ার্ড</label><input type="password" id="l-pass" autocomplete="current-password" required></div>
+      <div class="err" id="l-err"></div>
+      <button class="btn y" type="submit">লগইন</button>
+      <p class="hint">অ্যাকাউন্ট নেই? <a href="#register">নতুন অ্যাকাউন্ট খুলুন</a></p>
+    </form>
+  </section>
+
+  <!-- REGISTER -->
+  <section class="view" id="v-register" aria-label="রেজিস্টার">
+    <form class="form narrow box" id="regForm" novalidate>
+      <h2>নতুন অ্যাকাউন্ট</h2>
+      <div class="field"><label for="r-name">আপনার নাম</label><input type="text" id="r-name" autocomplete="name" maxlength="60" required></div>
+      <div class="field"><label for="r-email">ইমেইল</label><input type="email" id="r-email" autocomplete="email" required></div>
+      <div class="field"><label for="r-phone">মোবাইল নম্বর <span class="hint">(ঐচ্ছিক)</span></label><input type="tel" id="r-phone" autocomplete="tel" maxlength="20"></div>
+      <div class="field"><label for="r-pass">পাসওয়ার্ড <span class="hint">(কমপক্ষে ৬ অক্ষর)</span></label><input type="password" id="r-pass" autocomplete="new-password" minlength="6" required></div>
+      <div class="err" id="r-err"></div>
+      <button class="btn y" type="submit">অ্যাকাউন্ট খুলুন</button>
+      <p class="hint">আগেই অ্যাকাউন্ট আছে? <a href="#login">লগইন করুন</a></p>
+    </form>
+  </section>
+
+  <!-- ADMIN -->
+  <section class="view" id="v-admin" aria-label="অ্যাডমিন ড্যাশবোর্ড">
+    <div class="row between">
+      <div><h2>অ্যাডমিন ড্যাশবোর্ড</h2><p class="hint">রিপোর্ট যাচাই করুন, অবস্থা আপডেট করুন, একই সমস্যার রিপোর্ট একত্র করুন।</p></div>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="reports" aria-selected="true">রিপোর্ট</button>
+        <button type="button" role="tab" data-tab="users" aria-selected="false">ব্যবহারকারী</button>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div id="tab-reports" class="grid adm">
+      <div class="box plain">
+        <div class="row mb">
+          <select id="aS" class="auto" aria-label="অবস্থা"></select>
+          <select id="aC" class="auto" aria-label="ধরন"></select>
+          <select id="aO" class="auto" aria-label="সাজান">
+            <option value="severity">গুরুত্ব অনুযায়ী</option>
+            <option value="oldest">পুরনো আগে</option>
+            <option value="newest">নতুন আগে</option>
+          </select>
+        </div>
+        <div id="queue"></div>
+      </div>
+      <div class="box">
+        <h3 class="mb">ধরন অনুযায়ী খোলা সমস্যা</h3><div class="bars" id="catBars"></div>
+        <h3 class="mb mt2">এলাকা অনুযায়ী</h3><div class="bars" id="areaBars"></div>
+      </div>
+    </div>
+    <div id="tab-users" hidden>
+      <div class="scroll"><table class="users stack" id="usersTable"></table></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">আমার এলাকা · AmarElaka — নাগরিক ও কর্তৃপক্ষের মধ্যে যোগাযোগ ও জবাবদিহিতা</footer>
+
+<div class="ov" id="ov" role="dialog" aria-modal="true" aria-label="বিস্তারিত"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
