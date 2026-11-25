@@ -188,3 +188,5 @@ table.users { width: 100%; border-collapse: collapse; font-size: 15px; }
 .tname { color: var(--ink); font-weight: 600; font-size: 15px; }
 .troll { color: var(--mut); font-size: 14px; }
 .foot p { margin: 0; }
+
+.btn.danger { background: #c81e1e; color: #fff; }

@@ -218,7 +218,7 @@
     L1 = [...L1].sort($('#sortHome').value === 'sev'
       ? (a, b) => b.weight - a.weight || new Date(b.createdAt) - new Date(a.createdAt)
       : (a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    $('#homeList').innerHTML = L1.length ? L1.map(item).join('') : '<div class="empty">এই ফিল্টারে কোনো রিপোর্ট নেই। প্রথম রিপোর্টটি আপনিই করুন!</div>';
+    $('#homeList').innerHTML = L1.length ? L1.map(item).join('') : '<div class="empty">এই ফিল্টারে কোনো রিপোর্ট নেই। প্রথম সমস্যাটি আপনিই জানান!</div>';
   }
   function renderStats() {
     const c = (k) => reports.filter((r) => k.includes(r.status)).length;
@@ -339,7 +339,7 @@
         <h3>${esc(r.title)}</h3><span class="row mt">
         <button type="button" class="btn" data-sup="${esc(r.id)}" ${r.isMine || r.supported ? 'disabled' : ''}>${r.isMine ? 'এটি আপনার রিপোর্ট' : r.supported ? 'সমর্থন দেওয়া হয়েছে' : 'হ্যাঁ, এটাই আমার সমস্যা'}</button>
         <button type="button" class="btn g" data-open="${esc(r.id)}">বিস্তারিত</button></span></span></div>`).join('') +
-      '<p class="hint">ভিন্ন সমস্যা হলে নিচের বোতামে নতুন রিপোর্ট জমা দিন।</p></div>';
+      '<p class="hint">ভিন্ন সমস্যা হলে নিচের "সমস্যা জানান" বোতাম চাপুন।</p></div>';
   }
 
   $('#rform').addEventListener('submit', async (e) => {
@@ -367,11 +367,11 @@
       d.innerHTML = `<div class="box ok"><h2>রিপোর্ট জমা হয়েছে, ধন্যবাদ!</h2><p>আপনার ট্র্যাকিং কোড</p>
         <div class="code">${esc(report.code)}</div>
         <p class="hint">অ্যাডমিন যাচাই করলে এবং কাজ শুরু হলে অগ্রগতি এখানে দেখা যাবে।</p>
-        <div class="row center mt"><button class="btn" data-open="${esc(report.id)}">অগ্রগতি দেখুন</button><button class="btn g" id="again">আরেকটি রিপোর্ট</button></div></div>`;
+        <div class="row center mt"><button class="btn" data-open="${esc(report.id)}">অগ্রগতি দেখুন</button><button class="btn g" id="again">আরেকটি সমস্যা জানান</button></div></div>`;
       $('#again').addEventListener('click', resetForm);
       loadReports();
     } catch (err) { $('#e-form').textContent = err.message; }
-    btn.disabled = false; btn.textContent = 'রিপোর্ট জমা দিন';
+    btn.disabled = false; btn.textContent = 'সমস্যা জানান';
   });
   function resetForm() {
     $('#rform').reset(); selCat = null; pick = null; photoBlob = null; showPhoto(null);
@@ -435,7 +435,7 @@
       ${r.afterPhoto ? `<h3 class="mt2">সমাধানের পরের ছবি</h3><img class="photo mt" src="${esc(photoUrl(r.afterPhoto))}" alt="সমাধানের পরের ছবি">` : ''}
       <h3 class="mt2 mb">অগ্রগতির ইতিহাস</h3>
       <ul class="tl">${(r.history || []).map((h) => `<li style="--c:${stOf(h.status)[1]}"><b>${stOf(h.status)[0]}</b> <span class="hint">${date(h.at)}</span>${h.note ? `<div>${esc(h.note)}</div>` : ''}</li>`).join('')}</ul>
-      ${Auth.isAdmin && r.status !== 'merged' ? `<button class="btn mt" data-upd="${esc(r.id)}">অ্যাডমিন: অবস্থা আপডেট করুন</button>` : ''}`;
+      ${Auth.isAdmin ? `<div class="row mt">${r.status !== 'merged' ? `<button class="btn" data-upd="${esc(r.id)}">অ্যাডমিন: অবস্থা আপডেট করুন</button>` : ''}<button class="btn danger" data-del="${esc(r.id)}">রিপোর্ট মুছুন</button></div>` : ''}`;
     $('#ov').classList.add('on');
     $('#modal .x').focus();
   }
@@ -477,7 +477,7 @@
         <span class="meta">${pill(r.status)}<b>${esc(r.code)}</b><span>${SEV[r.severity]} · ${bn(r.weight)} রিপোর্ট</span></span>
         <div class="qt">${esc(r.title)}</div>
         <span class="meta"><span>${esc(CATS[r.category] || '')}</span><span>${esc(r.area)}</span><span>${ago(r.createdAt)}</span>${r.reporter ? `<span>রিপোর্টার: ${esc(r.reporter.name)}${r.reporter.phone ? ' (' + esc(r.reporter.phone) + ')' : ''}</span>` : ''}</span></div>
-        <div class="act row"><button class="btn g" data-open="${esc(r.id)}">দেখুন</button><button class="btn" data-upd="${esc(r.id)}">আপডেট</button></div></div>`).join('')
+        <div class="act row"><button class="btn g" data-open="${esc(r.id)}">দেখুন</button><button class="btn" data-upd="${esc(r.id)}">আপডেট</button><button class="btn danger" data-del="${esc(r.id)}" aria-label="মুছুন">মুছুন</button></div></div>`).join('')
         : '<div class="empty">এই ফিল্টারে কোনো রিপোর্ট নেই।</div>';
     } catch (err) { q.innerHTML = `<div class="empty">${esc(err.message)}</div>`; }
   }
@@ -550,12 +550,36 @@
     $('#ov').classList.add('on');
   }
 
+  // ---------- delete a fake report (admin) ----------
+  async function confirmDelete(id) {
+    let r;
+    try { ({ report: r } = await api('/api/reports/' + encodeURIComponent(id))); } catch (err) { toast(err.message); return; }
+    openId = null;
+    $('#modal').innerHTML = `<button class="x" aria-label="বন্ধ করুন" data-close>×</button>
+      <h2 class="mtitle">রিপোর্টটি মুছে ফেলবেন?</h2>
+      <div class="box mt"><div class="meta">${pill(r.status)}<b>${esc(r.code)}</b><span>${esc(r.area)}</span></div><div class="qt">${esc(r.title)}</div></div>
+      <p>রিপোর্ট, এর ছবি আর পুরো ইতিহাস <b>চিরতরে মুছে যাবে</b>, আর ফেরত আনা যাবে না।${r.mergedCount ? ` এর সাথে একত্র করা ${bn(r.mergedCount)}টি রিপোর্ট আবার আলাদা খোলা রিপোর্ট হয়ে যাবে।` : ''}</p>
+      <p class="hint">আসল কিন্তু ভুল বা অপ্রাসঙ্গিক রিপোর্ট হলে মুছে না ফেলে <b>বাতিল</b> করাই ভালো — তাতে রিপোর্টকারী কারণটা দেখতে পায়।</p>
+      <div class="err" id="d-err"></div>
+      <div class="row mt"><button class="btn danger" id="d-yes">হ্যাঁ, মুছে ফেলুন</button><button class="btn g" data-close>না, রেখে দিন</button></div>`;
+    $('#ov').classList.add('on');
+    $('#d-yes').addEventListener('click', async () => {
+      $('#d-yes').disabled = true;
+      try {
+        await api('/api/admin/reports/' + encodeURIComponent(id), { method: 'DELETE' });
+        closeModal(); toast(r.code + ' মুছে ফেলা হয়েছে।');
+        loadReports(); if (location.hash === '#admin') loadAdmin();
+      } catch (err) { $('#d-err').textContent = err.message; $('#d-yes').disabled = false; }
+    });
+  }
+
   // ---------- global clicks ----------
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (t.closest('[data-close]') || t.id === 'ov') { closeModal(); return; }
     const sup = t.closest('[data-sup]'); if (sup) { support(sup.dataset.sup, sup); return; }
     const upd = t.closest('[data-upd]'); if (upd) { openUpdate(upd.dataset.upd); return; }
+    const del = t.closest('[data-del]'); if (del) { confirmDelete(del.dataset.del); return; }
     const op = t.closest('[data-open]'); if (op) { openDetail(op.dataset.open); }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#ov').classList.contains('on')) closeModal(); });

@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const Report = require('../models/Report');
 const User = require('../models/User');
+const Photo = require('../models/Photo');
 const { CATEGORIES, OPEN_STATUSES } = Report;
 const { auth, adminOnly } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -134,6 +135,31 @@ router.patch('/reports/:id/status', upload.single('afterPhoto'), async (req, res
     report.history.push({ status, note, by: req.user.id, at: new Date() });
     await report.save();
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/reports/:id  -> removes a fake/spam report for good, with its photos.
+// Reports that had been merged into it become separate open reports again.
+router.delete('/reports/:id', async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'রিপোর্ট পাওয়া যায়নি।' });
+    const report = await Report.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: 'রিপোর্ট পাওয়া যায়নি।' });
+
+    const children = await Report.find({ mergedInto: report._id });
+    for (const c of children) {
+      c.mergedInto = null;
+      c.status = 'new';
+      c.history.push({ status: 'new', note: 'মূল রিপোর্টটি মুছে ফেলায় এটি আবার আলাদা রিপোর্ট হয়েছে', by: req.user.id, at: new Date() });
+      await c.save();
+    }
+    const photos = [report.photo, report.afterPhoto].filter(Boolean);
+    if (photos.length) await Photo.deleteMany({ _id: { $in: photos } });
+    await report.deleteOne();
+    console.log(`Report ${report.code} deleted by admin ${req.user.id}`);
+    res.json({ ok: true, code: report.code, unmerged: children.length });
   } catch (err) {
     next(err);
   }

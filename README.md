@@ -222,6 +222,7 @@ Or set `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env` to that person's email and run
 | GET | `/api/admin/reports` | admin | queue (`?status&category&sort`) |
 | GET | `/api/admin/reports/:id/merge-candidates` | admin | same category within 2 km |
 | PATCH | `/api/admin/reports/:id/status` | admin | `status`, `note`, `mergedInto`, `afterPhoto` |
+| DELETE | `/api/admin/reports/:id` | admin | delete a fake report and its photos (reports merged into it become open again) |
 | GET | `/api/admin/users` | admin | user list |
 | PATCH | `/api/admin/users/:id/role` | admin | make admin / user |
 
