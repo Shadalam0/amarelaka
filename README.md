@@ -193,6 +193,21 @@ Mail sent from a Gmail address through Brevo may land in **Spam** at first; with
 
 ---
 
+## 7c. Videos up to 2 minutes (free, with Cloudinary)
+
+Users can attach one video (up to **2 minutes / 100 MB**) to a report. Videos are too big for the free MongoDB (512 MB), so they go to **Cloudinary**:
+the browser uploads straight to Cloudinary with a one-time signature from the backend, so videos never pass through Render.
+The backend then asks Cloudinary for the video's real length and size before saving the report, and deletes the video when an admin deletes the report.
+
+1. Sign up at https://cloudinary.com (free, no card).
+2. Console → **Settings → API Keys** (or the Dashboard): copy **Cloud name**, **API Key**, **API Secret**.
+3. On Render → **Environment**, add `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` → Save.
+
+Without these three values the video option simply stays hidden.
+Free plan: 25 credits a month shared by storage, bandwidth and video processing, and at most 100 MB per video. Watch usage in the Cloudinary dashboard.
+
+---
+
 ## 8. Making more admins
 
 Log in as admin → **অ্যাডমিন** → **ব্যবহারকারী** tab → change a user's role to **অ্যাডমিন**. (You cannot change your own role.)
@@ -218,6 +233,8 @@ Or set `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env` to that person's email and run
 | POST | `/api/reports` | user | new report (multipart, `photo`) |
 | POST | `/api/reports/:id/support` | user | "আমারও একই সমস্যা" |
 | GET | `/api/photos/:id` | anyone | photo |
+| GET | `/api/reports/video-config` | anyone | is video upload on, limits |
+| POST | `/api/reports/video-signature` | user | one-time signature to upload a video to Cloudinary |
 | GET | `/api/admin/stats` | admin | dashboard numbers |
 | GET | `/api/admin/reports` | admin | queue (`?status&category&sort`) |
 | GET | `/api/admin/reports/:id/merge-candidates` | admin | same category within 2 km |

@@ -62,6 +62,9 @@ function toPublic(r, weight, userId) {
     severity: severity(weight),
     photo: r.photo || null,
     afterPhoto: r.afterPhoto || null,
+    video: r.video && r.video.url
+      ? { url: r.video.url, poster: r.video.url.replace(/\.[a-z0-9]+$/i, '.jpg'), duration: r.video.duration || null }
+      : null,
     mergedInto: r.mergedInto || null,
     createdAt: r.createdAt,
     resolvedAt: r.resolvedAt || null,

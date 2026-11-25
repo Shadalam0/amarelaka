@@ -97,8 +97,16 @@
       <div class="field">
         <span class="lab">৩. ছবি <span class="hint">— ছবি থাকলে দ্রুত যাচাই হয়</span></span>
         <label class="drop" for="f-photo" id="dropBox"><span>ছবি তুলুন বা বেছে নিন</span></label>
-        <input type="file" id="f-photo" accept="image/*" capture="environment" hidden>
+        <input type="file" id="f-photo" accept="image/*" hidden>
         <button type="button" class="btn g mt" id="rmPhoto" hidden>ছবি সরান</button>
+        <div id="videoField" class="mt2" hidden>
+          <span class="lab">ভিডিও <span class="hint">(ঐচ্ছিক — সর্বোচ্চ ২ মিনিট ও ১০০ MB)</span></span>
+          <div id="vidPrev"></div>
+          <label class="drop" for="f-video" id="vidBox"><span>ভিডিও তুলুন বা বেছে নিন</span></label>
+          <input type="file" id="f-video" accept="video/*" hidden>
+          <button type="button" class="btn g mt" id="rmVideo" hidden>ভিডিও সরান</button>
+          <div class="err" id="e-video"></div>
+        </div>
       </div>
 
       <div class="field">
@@ -115,6 +123,7 @@
 
       <div id="dupBox"></div>
       <div class="err" id="e-form"></div>
+      <div class="upbar" id="upBar" hidden><span class="upbar-t"><i id="upFill"></i></span><span id="upTxt"></span></div>
       <div class="row"><button class="btn y" type="submit" id="submitBtn">সমস্যা জানান</button></div>
     </form>
     <div class="form" id="doneBox" hidden></div>

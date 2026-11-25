@@ -41,9 +41,12 @@
 
   // ---------- rendering pieces ----------
   const pill = (s) => { const [t, c] = stOf(s); return `<span class="pill" style="background:${c}">${t}</span>`; };
+  const okVideo = (v) => v && typeof v.url === 'string' && v.url.startsWith('https://res.cloudinary.com/');
   const thumb = (r) => r.photo
     ? `<img class="thumb" src="${esc(photoUrl(r.photo))}" alt="" loading="lazy">`
-    : `<span class="thumb"><svg><use href="#ic-${catKey(r.category)}"/></svg></span>`;
+    : okVideo(r.video)
+      ? `<span class="thumb vthumb"><img src="${esc(r.video.poster)}" alt="" loading="lazy"><b aria-label="ভিডিও">▶</b></span>`
+      : `<span class="thumb"><svg><use href="#ic-${catKey(r.category)}"/></svg></span>`;
   const progPct = (s) => { const i = FLOW.indexOf(s); return i < 0 ? 100 : (i + 1) * 25; };
   function item(r) {
     return `<button class="item" data-open="${esc(r.id)}">${thumb(r)}<span>
@@ -361,6 +364,7 @@
 
     const btn = $('#submitBtn'); btn.disabled = true; btn.textContent = 'জমা হচ্ছে…';
     try {
+      if (videoFile) fd.append('videoPublicId', await uploadVideo(videoFile));
       const { report } = await api('/api/reports', { method: 'POST', form: fd });
       $('#rform').hidden = true;
       const d = $('#doneBox'); d.hidden = false;
@@ -371,10 +375,65 @@
       $('#again').addEventListener('click', resetForm);
       loadReports();
     } catch (err) { $('#e-form').textContent = err.message; }
-    btn.disabled = false; btn.textContent = 'সমস্যা জানান';
+    btn.disabled = false; btn.textContent = 'সমস্যা জানান'; $('#upBar').hidden = true;
   });
+
+  // ---------- video (optional, up to 2 minutes, stored on Cloudinary) ----------
+  let videoCfg = null, videoFile = null, videoPreview = null;
+  api('/api/reports/video-config').then((c) => { videoCfg = c; $('#videoField').hidden = !c.enabled; }).catch(() => {});
+  const videoLength = (file) => new Promise((ok) => {
+    const v = document.createElement('video'); const u = URL.createObjectURL(file);
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { URL.revokeObjectURL(u); ok(v.duration); };
+    v.onerror = () => { URL.revokeObjectURL(u); ok(NaN); };
+    v.src = u;
+  });
+  function showVideo(file) {
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    videoPreview = file ? URL.createObjectURL(file) : null;
+    // The preview sits outside the picker, so pressing play does not open the file chooser
+    $('#vidPrev').innerHTML = file ? `<video class="vprev" src="${videoPreview}" controls muted playsinline preload="metadata"></video>` : '';
+    $('#vidBox').innerHTML = file ? '<span>অন্য ভিডিও বেছে নিন</span>' : '<span>ভিডিও তুলুন বা বেছে নিন</span>';
+    $('#rmVideo').hidden = !file;
+  }
+  $('#f-video').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; $('#e-video').textContent = '';
+    if (!f) return;
+    const fail = (m) => { $('#e-video').textContent = m; e.target.value = ''; videoFile = null; showVideo(null); };
+    if (!/^video\//.test(f.type)) return fail('শুধু ভিডিও ফাইল দিন।');
+    if (f.size > videoCfg.maxBytes) return fail(`ভিডিওটি ${bn(Math.round(f.size / 1048576))} MB — সর্বোচ্চ ১০০ MB দেওয়া যাবে। ছোট বা কম রেজোলিউশনের ভিডিও দিন।`);
+    const secs = await videoLength(f);
+    if (secs > videoCfg.maxSeconds + 1) return fail(`ভিডিওটি ${bn(Math.round(secs))} সেকেন্ডের — সর্বোচ্চ ২ মিনিট (১২০ সেকেন্ড) দেওয়া যাবে।`);
+    videoFile = f; showVideo(f);
+  });
+  $('#rmVideo').addEventListener('click', () => { videoFile = null; $('#f-video').value = ''; $('#e-video').textContent = ''; showVideo(null); });
+
+  // Uploads straight from the browser to Cloudinary, with a progress bar. Returns the video's id.
+  async function uploadVideo(file) {
+    const sig = await api('/api/reports/video-signature', { method: 'POST' });
+    const form = new FormData();
+    form.append('file', file); form.append('api_key', sig.apiKey); form.append('timestamp', sig.timestamp);
+    form.append('folder', sig.folder); form.append('signature', sig.signature);
+    $('#upBar').hidden = false; setUp(0);
+    return new Promise((ok, no) => {
+      const x = new XMLHttpRequest();
+      x.open('POST', `https://api.cloudinary.com/v1_1/${encodeURIComponent(sig.cloudName)}/video/upload`);
+      x.upload.onprogress = (e) => { if (e.lengthComputable) setUp(e.loaded / e.total); };
+      x.onload = () => {
+        let d = {}; try { d = JSON.parse(x.responseText); } catch { /* ignore */ }
+        if (x.status >= 200 && x.status < 300 && d.public_id) { setUp(1, 'ভিডিও আপলোড হয়েছে, রিপোর্ট জমা হচ্ছে…'); ok(d.public_id); }
+        else no(new Error('ভিডিও আপলোড হয়নি' + (d.error && d.error.message ? ': ' + d.error.message : '।')));
+      };
+      x.onerror = () => no(new Error('ভিডিও আপলোড হয়নি — ইন্টারনেট সংযোগ দেখুন।'));
+      x.send(form);
+    });
+  }
+  function setUp(f, text) {
+    $('#upFill').style.width = Math.round(f * 100) + '%';
+    $('#upTxt').textContent = text || `ভিডিও আপলোড হচ্ছে… ${bn(Math.round(f * 100))}%`;
+  }
   function resetForm() {
-    $('#rform').reset(); selCat = null; pick = null; photoBlob = null; showPhoto(null);
+    $('#rform').reset(); selCat = null; pick = null; photoBlob = null; showPhoto(null); videoFile = null; showVideo(null);
     if (pickMarker) { pickMap.removeLayer(pickMarker); pickMarker = null; }
     $('#locTxt').textContent = 'এখনো লোকেশন বেছে নেওয়া হয়নি।'; $('#dupBox').innerHTML = '';
     $('#doneBox').hidden = true; $('#rform').hidden = false;
@@ -425,6 +484,7 @@
       <p class="meta"><span>${esc(r.area)}${r.landmark ? ' · ' + esc(r.landmark) : ''}</span><span>${date(r.createdAt)}</span>
         <a href="https://www.openstreetmap.org/?mlat=${+r.lat}&mlon=${+r.lng}#map=18/${+r.lat}/${+r.lng}" target="_blank" rel="noopener">ম্যাপে খুলুন</a></p>
       ${r.photo ? `<img class="photo" src="${esc(photoUrl(r.photo))}" alt="সমস্যার ছবি">` : ''}
+      ${okVideo(r.video) ? `<video class="photo" src="${esc(r.video.url)}" poster="${esc(r.video.poster)}" controls playsinline preload="metadata"></video>` : ''}
       ${r.description ? `<p>${esc(r.description)}</p>` : ''}
       ${r.status === 'merged' ? `<div class="box mt">এই রিপোর্টটি একই সমস্যার মূল রিপোর্ট <button class="btn g" data-open="${esc(r.mergedInto)}">${esc(r.mergedIntoCode || 'দেখুন')}</button> এর সাথে একত্র করা হয়েছে। অগ্রগতি সেখানে দেখুন।</div>` : ''}
       ${r.status === 'rejected' ? '<div class="box mt">এই রিপোর্টটি বাতিল করা হয়েছে — কারণ নিচের ইতিহাসে দেখুন।</div>' : ''}

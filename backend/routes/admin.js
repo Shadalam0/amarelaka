@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Report = require('../models/Report');
 const User = require('../models/User');
 const Photo = require('../models/Photo');
+const cloud = require('../utils/cloudinary');
 const { CATEGORIES, OPEN_STATUSES } = Report;
 const { auth, adminOnly } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -155,6 +156,7 @@ router.delete('/reports/:id', async (req, res, next) => {
       c.history.push({ status: 'new', note: 'মূল রিপোর্টটি মুছে ফেলায় এটি আবার আলাদা রিপোর্ট হয়েছে', by: req.user.id, at: new Date() });
       await c.save();
     }
+    if (report.video && report.video.publicId) await cloud.destroyVideo(report.video.publicId);
     const photos = [report.photo, report.afterPhoto].filter(Boolean);
     if (photos.length) await Photo.deleteMany({ _id: { $in: photos } });
     await report.deleteOne();

@@ -25,8 +25,9 @@ app.use(
         scriptSrc: ["'self'", 'https://unpkg.com'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://fonts.googleapis.com'], // inline styles colour pins, pills, bars
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://unpkg.com'],
-        connectSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://unpkg.com', 'https://res.cloudinary.com'],
+        mediaSrc: ["'self'", 'blob:', 'https://res.cloudinary.com'],
+        connectSrc: ["'self'", 'https://api.cloudinary.com'],
         upgradeInsecureRequests: null,
       },
     },

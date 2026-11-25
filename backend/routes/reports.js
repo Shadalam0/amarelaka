@@ -5,6 +5,7 @@ const { CATEGORIES, OPEN_STATUSES } = Report;
 const { auth, optionalAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { savePhoto, makeCode, weightMap, toPublic, isNum } = require('../utils/helpers');
+const cloud = require('../utils/cloudinary');
 
 const router = express.Router();
 const LIST_FIELDS = '-history -description';
@@ -81,6 +82,17 @@ async function detail(report, userId) {
   return out;
 }
 
+// GET /api/reports/video-config  -> is video upload switched on?
+router.get('/video-config', (req, res) => {
+  res.json({ enabled: cloud.isEnabled(), maxSeconds: cloud.MAX_SECONDS, maxBytes: cloud.MAX_BYTES });
+});
+
+// POST /api/reports/video-signature  -> lets a logged-in user upload ONE video straight to Cloudinary
+router.post('/video-signature', auth, (req, res) => {
+  if (!cloud.isEnabled()) return res.status(503).json({ message: 'ভিডিও আপলোড এখন চালু নেই।' });
+  res.json(cloud.uploadSignature());
+});
+
 // GET /api/reports/code/AE-XXXXX  -> track by tracking code
 router.get('/code/:code', optionalAuth, async (req, res, next) => {
   try {
@@ -118,6 +130,22 @@ router.post('/', auth, upload.single('photo'), async (req, res, next) => {
       return res.status(400).json({ message: 'ম্যাপে লোকেশন বেছে নিন।' });
     }
 
+    // Optional video: the browser already uploaded it to Cloudinary; check its real length and size there
+    let video;
+    const videoId = String(b.videoPublicId || '').trim();
+    if (videoId) {
+      if (!cloud.isEnabled() || !videoId.startsWith(cloud.FOLDER + '/') || !/^[\w/-]+$/.test(videoId)) {
+        return res.status(400).json({ message: 'ভিডিওটি গ্রহণ করা যায়নি।' });
+      }
+      const info = await cloud.getVideo(videoId);
+      if (!info) return res.status(400).json({ message: 'ভিডিওটি খুঁজে পাওয়া যায়নি, আবার আপলোড করুন।' });
+      if ((info.duration || 0) > cloud.MAX_SECONDS + 5 || (info.bytes || 0) > cloud.MAX_BYTES) {
+        await cloud.destroyVideo(videoId);
+        return res.status(400).json({ message: 'ভিডিও সর্বোচ্চ ২ মিনিট ও ১০০ MB হতে পারবে।' });
+      }
+      video = { publicId: videoId, url: info.secure_url, duration: Math.round(info.duration || 0) };
+    }
+
     const photo = await savePhoto(req.file, req.user.id);
     const report = await Report.create({
       code: await makeCode(),
@@ -128,6 +156,7 @@ router.post('/', auth, upload.single('photo'), async (req, res, next) => {
       landmark: String(b.landmark || '').trim().slice(0, 100),
       location: { type: 'Point', coordinates: [Number(b.lng), Number(b.lat)] },
       photo,
+      video,
       createdBy: req.user.id,
       history: [{ status: 'new', note: 'অভিযোগ জমা দেওয়া হয়েছে', by: req.user.id }],
     });

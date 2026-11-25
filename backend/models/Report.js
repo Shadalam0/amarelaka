@@ -29,6 +29,12 @@ const reportSchema = new Schema(
     },
     photo: { type: Schema.Types.ObjectId, ref: 'Photo' },
     afterPhoto: { type: Schema.Types.ObjectId, ref: 'Photo' },
+    // Optional video (up to 2 min) stored on Cloudinary
+    video: {
+      publicId: String,
+      url: String,
+      duration: Number, // seconds
+    },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     status: { type: String, enum: STATUSES, default: 'new', index: true },
     history: [historySchema],
