@@ -3,7 +3,7 @@
    Font: Hind Siliguri (Bangla + English), loaded from Google Fonts in index.html. */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light; /* always the white theme, even when the phone or PC uses dark mode */
   --bg: light-dark(#ffffff, #0f1720);
   --ink: light-dark(#14213d, #e8edf5);
   --mut: light-dark(#5b6476, #9aa6b8);
